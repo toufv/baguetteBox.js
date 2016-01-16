@@ -35,6 +35,7 @@
         fullScreen: false,
         noScrollbars: false,
         buttons: 'auto',
+        buttonsHideTimeout: null,
         async: false,
         preload: 2,
         animation: 'slideIn',
@@ -64,6 +65,14 @@
     var imagesElements = [];
     // Event handlers
     var imagedEventHandlers = {};
+    // Handler of buttons hide timeout
+    var buttonsHideTimeoutId = null;
+    // Store previous mouse position to prevent event being called when nothing has moved
+    var previousMousePosition = {
+        x: 0,
+        y: 0
+    };
+
     var overlayClickHandler = function(event) {
         // When clicked on the overlay (outside displayed image) close it
         if(event.target && event.target.nodeName !== 'IMG' && event.target.nodeName !== 'FIGCAPTION')
@@ -302,6 +311,9 @@
             return;
 
         bind(document, 'keydown', keyDownHandler);
+        // Add mousemove event listener only if option is set
+        if(options.buttonsHideTimeout)
+            bind(window, 'mousemove', mousemove);
         currentIndex = chosenImageIndex;
         loadImage(currentIndex, function() {
             preloadNext(currentIndex);
@@ -318,8 +330,30 @@
             if(options.afterShow)
                 options.afterShow();
         }, 50);
+        if(options.buttonsHideTimeout)
+            resetHideIconsTimeout();
         if(options.onChange)
             options.onChange(currentIndex, imagesElements.length);
+    }
+
+    function mousemove(event) {
+        console.log(1);
+        // Ignore small mouse movements
+        if(Math.abs(previousMousePosition.x - event.pageX) < 10 && 
+                Math.abs(previousMousePosition.y - event.pageY) < 10)
+            return;
+
+        previousMousePosition.x = event.pageX;
+        previousMousePosition.y = event.pageY;
+        closeButton.style.display = previousButton.style.display = nextButton.style.display = 'block';
+        resetHideIconsTimeout();
+    }
+
+    function resetHideIconsTimeout() {
+        clearTimeout(buttonsHideTimeoutId);
+        buttonsHideTimeoutId = setTimeout(function() {
+            closeButton.style.display = previousButton.style.display = nextButton.style.display = 'none';
+        }, options.buttonsHideTimeout);
     }
 
     function enterFullScreen() {
@@ -347,6 +381,8 @@
             return;
 
         unbind(document, 'keydown', keyDownHandler);
+        if(options.buttonsHideTimeout)
+            unbind(window, 'mousemove', mousemove);
         // Fade out and hide the overlay
         overlay.className = '';
         setTimeout(function() {
@@ -447,6 +483,8 @@
             }, 400);
             returnValue = false;
         }
+        if(options.buttonsHideTimeout)
+            resetHideIconsTimeout();
         if(options.onChange)
             options.onChange(currentIndex, imagesElements.length);
         return returnValue;
@@ -468,6 +506,8 @@
             }, 400);
             returnValue = false;
         }
+        if(options.buttonsHideTimeout)
+            resetHideIconsTimeout();
         if(options.onChange)
             options.onChange(currentIndex, imagesElements.length);
         return returnValue;
