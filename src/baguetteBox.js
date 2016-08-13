@@ -58,6 +58,8 @@
     var currentGallery = [];
     // Current image index inside the slider
     var currentIndex = 0;
+    // Visibility of the overlay
+    var isOverlayVisible = false;
     // Touch event start position (for slide gesture)
     var touch = {};
     // If set to true ignore touch events because animation was already fired
@@ -163,7 +165,7 @@
 
         buildOverlay();
         removeFromCache(selector);
-        bindImageClickListeners(selector, userOptions);
+        return bindImageClickListeners(selector, userOptions);
     }
 
     function bindImageClickListeners(selector, userOptions) {
@@ -214,6 +216,8 @@
             });
             selectorData.galleries.push(gallery);
         });
+
+        return selectorData.galleries;
     }
 
     function clearCachedData() {
@@ -425,6 +429,7 @@
         }
         documentLastFocus = document.activeElement;
         initFocus();
+        isOverlayVisible = true;
     }
 
     function initFocus() {
@@ -478,6 +483,7 @@
             }
         }, 500);
         documentLastFocus && documentLastFocus.focus();
+        isOverlayVisible = false;
     }
 
     function loadImage(index, callback) {
@@ -576,46 +582,62 @@
 
     // Return false at the right end of the gallery
     function showNextImage() {
-        var returnValue;
-        // Check if next image exists
-        if (currentIndex <= imagesElements.length - 2) {
-            currentIndex++;
-            updateOffset();
-            preloadNext(currentIndex);
-            returnValue = true;
-        } else if (options.animation) {
-            slider.className = 'bounce-from-right';
-            setTimeout(function() {
-                slider.className = '';
-            }, 400);
-            returnValue = false;
-        }
-        if (options.onChange) {
-            options.onChange(currentIndex, imagesElements.length);
-        }
-        return returnValue;
+        return show(currentIndex + 1);
     }
 
     // Return false at the left end of the gallery
     function showPreviousImage() {
-        var returnValue;
-        // Check if previous image exists
-        if (currentIndex >= 1) {
-            currentIndex--;
-            updateOffset();
-            preloadPrev(currentIndex);
-            returnValue = true;
-        } else if (options.animation) {
-            slider.className = 'bounce-from-left';
-            setTimeout(function() {
-                slider.className = '';
-            }, 400);
-            returnValue = false;
+        return show(currentIndex - 1);
+    }
+
+    /**
+     * Move the gallery to a specific index
+     * @param {number} index the position of the image
+     * @param {array} gallery which should be opened
+     * @return {boolean} the status of the operation
+     */
+    function show(index, gallery) {
+        if(!isOverlayVisible && index >= 0 && index < gallery.length) {
+            prepareOverlay(gallery, options);
+            showOverlay(index);
+            return true;
         }
+        if(index < 0) {
+            if (options.animation) {
+                bounceAnimation('left');
+            }
+            return false;
+        }
+        if(index >= imagesElements.length) {
+            if (options.animation) {
+                bounceAnimation('right');
+            }
+            return false;
+        }
+
+        currentIndex = index;
+        loadImage(currentIndex, function() {
+            preloadNext(currentIndex);
+            preloadPrev(currentIndex);
+        });
+        updateOffset();
+
         if (options.onChange) {
             options.onChange(currentIndex, imagesElements.length);
         }
-        return returnValue;
+
+        return true;
+    }
+
+    /**
+     * Triggers the bounce animation
+     * @param {('left'|'right')} direction - Direction of the movement
+     */
+    function bounceAnimation(direction) {
+        slider.className = 'bounce-from-' + direction;
+        setTimeout(function() {
+            slider.className = '';
+        }, 400);
     }
 
     function updateOffset() {
@@ -709,8 +731,10 @@
 
     return {
         run: run,
+        show: show,
         showNext: showNextImage,
         showPrevious: showPreviousImage,
+        hide: hideOverlay,
         destroy: destroyPlugin
     };
 }));
