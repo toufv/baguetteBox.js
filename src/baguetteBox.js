@@ -610,6 +610,20 @@
         return returnValue;
     }
 
+    function showImage(index) {
+        currentIndex = index;
+
+        loadImage(currentIndex, function() {
+            preloadNext(currentIndex);
+            preloadPrev(currentIndex);
+        });
+        updateOffset();
+
+        if (options.onChange) {
+            options.onChange(currentIndex, imagesElements.length);
+        }
+    }
+
     function updateOffset() {
         var offset = -currentIndex * 100 + '%';
         if (options.animation === 'fadeIn') {
@@ -705,6 +719,7 @@
         run: run,
         destroy: destroyPlugin,
         showNext: showNextImage,
-        showPrevious: showPreviousImage
+        showPrevious: showPreviousImage,
+        showImage: showImage
     };
 }));
